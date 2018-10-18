@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("feebleUART")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("tias.pro")]
 [assembly: AssemblyProduct("feebleUART")]
-[assembly: AssemblyCopyright("Copyright ©  2018")]
+[assembly: AssemblyCopyright("Copyright ©  2018, George Tsyrkov")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
