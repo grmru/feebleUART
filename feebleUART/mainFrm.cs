@@ -15,6 +15,8 @@ namespace feebleUART
     {
         private SerialPort _selectedPort;
 
+        private System.Threading.Thread _read_thread;
+
         public mainFrm()
         {
             InitializeComponent();
@@ -30,6 +32,8 @@ namespace feebleUART
 
             this.comboBox_handshake.SelectionStart = 0;
             this.comboBox_handshake.SelectionLength = 0;
+
+            //this._read_thread = new System.Threading.Thread();
         }
 
         private void button_open_Click(object sender, EventArgs e)
@@ -131,6 +135,11 @@ namespace feebleUART
                     MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
+        }
+
+        private void readingLogic()
+        {
+
         }
 
         private void _selectedPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
