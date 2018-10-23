@@ -16,6 +16,7 @@ namespace feebleUART
         private SerialPort _selectedPort;
 
         private System.Threading.Thread _read_thread;
+        private bool _listenActive;
 
         public mainFrm()
         {
@@ -32,8 +33,6 @@ namespace feebleUART
 
             this.comboBox_handshake.SelectionStart = 0;
             this.comboBox_handshake.SelectionLength = 0;
-
-            //this._read_thread = new System.Threading.Thread();
         }
 
         private void button_open_Click(object sender, EventArgs e)
@@ -113,10 +112,20 @@ namespace feebleUART
                     this._selectedPort.Handshake = handshake;
                     this._selectedPort.RtsEnable = this.checkBox_RtsEnable.Checked;
                     this._selectedPort.DtrEnable = this.checkBox_DtrEnable.Checked;
-                    this._selectedPort.DataReceived += _selectedPort_DataReceived;
+                    if (this.radioButton_event.Checked)
+                    {
+                        this._selectedPort.DataReceived += _selectedPort_DataReceived;
+                    }
 
                     this._selectedPort.Open();
                     this.button_open.Text = "Close";
+
+                    if (this.radioButton_thread.Checked)
+                    {
+                        this._listenActive = true;
+                        this._read_thread = new System.Threading.Thread(readingLogic);
+                        this._read_thread.Start();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -129,49 +138,121 @@ namespace feebleUART
                 {
                     this._selectedPort.Close();
                     this.button_open.Text = "Open";
+
+                    this._listenActive = false;
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
-        }
-
-        private void readingLogic()
-        {
-
         }
 
         private void _selectedPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            if (sender is SerialPort)
+            this.readData();
+        }
+
+        private void readingLogic()
+        {
+            while(this._listenActive)
             {
-                SerialPort curPort = (SerialPort)sender;
+                this.readData();
+            }
+        }
 
-                string str = string.Empty;
-
-                try
+        private void readData()
+        {
+            if (this._selectedPort != null)
+            {
+                if (this._selectedPort.IsOpen && this._selectedPort.BytesToRead > 0)
                 {
-                    str = curPort.ReadLine();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                    string str = string.Empty;
 
-                if (this.checkBox_insertNewLine.Checked && this.textBox_recevied.Text != string.Empty)
-                {
-                    this.textBox_recevied.Text += System.Environment.NewLine;
-                }
+                    System.Threading.Thread.Sleep(500);
 
-                if (this.checkBox_insertTimeStamp.Checked)
-                {
-                    this.textBox_recevied.Text += string.Format("[{0:yyMMdd - HH:mm:ss.fffff}]: ", DateTime.Now);
-                }
+                    try
+                    {
+                        byte[] read_bytes = new byte[this._selectedPort.BytesToRead];
+                        this._selectedPort.Read(read_bytes, 0, this._selectedPort.BytesToRead);
+                        str = Encoding.Default.GetString(read_bytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
 
-                this.textBox_recevied.Text += str;
+                    if (this.isNewLineResponse() && this.currentText() != string.Empty)
+                    {
+                        this.printText(System.Environment.NewLine);
+                    }
+
+                    if (this.checkBox_insertTimeStamp.Checked)
+                    {
+                        this.printText(string.Format("[{0:yyMMdd - HH:mm:ss.fffff}]: ", DateTime.Now));
+                    }
+
+                    this.printText(str);
+                }
             }
 
+            System.Threading.Thread.Sleep(500);
+        }
+
+        delegate void SetTextDelegate(string text);
+        private void printText(string text)
+        {
+            if (this.textBox_recevied.InvokeRequired)
+            {
+                SetTextDelegate d = new SetTextDelegate(printText);
+                this.Invoke(d, new object[] { text });
+            }
+            else
+            {
+                this.textBox_recevied.Text += text;
+            }
+        }
+
+        delegate string GetTextDelegate();
+        private string currentText()
+        {
+            if (this.textBox_recevied.InvokeRequired)
+            {
+                GetTextDelegate d = new GetTextDelegate(currentText);
+                return (string)this.Invoke(d);
+            }
+            else
+            {
+                return this.textBox_recevied.Text;
+            }
+        }
+
+        delegate bool CheckBoxInsertNewLineCheckedDelegate();
+        private bool isNewLineResponse()
+        {
+            if (this.checkBox_insertNewLine.InvokeRequired)
+            {
+                CheckBoxInsertNewLineCheckedDelegate d = new CheckBoxInsertNewLineCheckedDelegate(isNewLineResponse);
+                return (bool)this.Invoke(d);
+            }
+            else
+            {
+                return this.checkBox_insertNewLine.Checked;
+            }
+        }
+
+        delegate bool CheckBoxInsertTimeStampCheckedDelegate();
+        private bool isTimeStampResponse()
+        {
+            if (this.checkBox_insertTimeStamp.InvokeRequired)
+            {
+                CheckBoxInsertTimeStampCheckedDelegate d = new CheckBoxInsertTimeStampCheckedDelegate(isTimeStampResponse);
+                return (bool)this.Invoke(d);
+            }
+            else
+            {
+                return this.checkBox_insertTimeStamp.Checked;
+            }
         }
 
         private void button_send_Click(object sender, EventArgs e)
@@ -196,6 +277,17 @@ namespace feebleUART
             {
                 MessageBox.Show("Serial port is closed", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+        }
+
+        private void mainFrm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            this._listenActive = false;
+        }
+
+        private void button_about_Click(object sender, EventArgs e)
+        {
+            mainAboutBox dlg = new mainAboutBox();
+            dlg.ShowDialog();
         }
     }
 }
